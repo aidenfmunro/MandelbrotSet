@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <immintrin.h>
 
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
 
@@ -8,11 +9,12 @@ const int WINDOW_WIDTH  = 1920;
 const int BYTES_IN_PIXEL = 4;
 
 const int MAX_ITERATION_DEPTH = 256;
+const int MAX_RADIUS = 10;
 
 struct complexNumber
 {
-    long double real;
-    long double imag;
+    float real;
+    float imag;
 };
 
 int main(void)
@@ -43,13 +45,22 @@ int main(void)
             }
         }
 
-    generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
+        {
+            sf::Vector2i position = sf::Mouse::getPosition(window);
+            shiftX -= position.x - shiftX;
+            shiftY -= position.y - shiftY;
 
-    screen.update(pixels);
+            zoom *= 2;
+        }
+    
+        generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
 
-    window.clear();
-    window.draw(sprite);
-    window.display();
+        screen.update(pixels);
+
+        window.clear();
+        window.draw(sprite);
+        window.display();
 
     }
 
@@ -58,51 +69,111 @@ int main(void)
 
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
-    for(int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
+    for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
+    {
+        for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
         {
-            for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
+            float x = ( (float)screenX - shiftX ) / zoom;
+            float y = ( (float)screenY - shiftY ) / zoom;
+
+            complexNumber c = {.real = x, .imag = y};
+
+            complexNumber z = c;
+
+            int iteration = 0; 
+
+            for (; iteration < MAX_ITERATION_DEPTH; iteration++)
             {
-                //scale the pixel location to the complex plane for calculations
-                float x = ( (float)screenX - shiftX ) / zoom;
-                float y = ( (float)screenY - shiftY ) / zoom;
+                complexNumber z2 = {.real = z.real * z.real - z.imag * z.imag + c.real,
+                                    .imag = 2 * z.real * z.imag               + c.imag};
 
-                complexNumber c = {.real = x, .imag = y};
+                z = z2;
 
-                complexNumber z = c;
+                iteration++;
 
-                int iteration = 0; //keep track of the number of iterations
+                if (z.real * z.real + z.imag * z.imag > MAX_RADIUS * MAX_RADIUS)
+                    break;
+            }
 
-                for (; iteration < MAX_ITERATION_DEPTH; iteration++)
-                {
-                    complexNumber z2 = {.real = z.real * z.real - z.imag * z.imag + c.real,
-                                        .imag = 2 * z.real * z.imag               + c.imag};
+            sf::Uint8 r = 0, g = 0, b = 0;
 
-                    z = z2;
+            if (iteration < MAX_ITERATION_DEPTH)
+            {
+                float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
 
-                    iteration++;
+                r = (sf::Uint8)(255 - iterColor);
+                g = (sf::Uint8)(iterColor + 2);
+                b = (sf::Uint8)(iterColor + 3);
+            }
 
-                    if (z.real * z.real + z.imag * z.imag > 100)
-                        break;
-                }
+            int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
 
-                sf::Uint8 r = 0, g = 0, b = 0;
+            pixels[pixelIndex + 0] = r;
+            pixels[pixelIndex + 1] = g;
+            pixels[pixelIndex + 2] = b;
+            pixels[pixelIndex + 3] = 255;
+        }
+    }
+}
 
-                if (iteration < MAX_ITERATION_DEPTH)
-                {
-                    float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
+struct complexNumberAVX
+{
+    __m256 real;
+    __m256 imag;  
+};
 
-                    r = (sf::Uint8)(255 - iterColor);
-                    g = (sf::Uint8)(iterColor + 2);
-                    b = (sf::Uint8)(iterColor + 3);
-                }
+const __m256 STEPS = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+const __m256 MASK  = _mm256_set1_ps(1);
+const __m256 R2    = _mm256_set1_ps(MAX_RADIUS * MAX_RADIUS);
 
-                int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
+void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
+{
+    __m256i N = _mm256_set1_epi32(0);
 
-                pixels[pixelIndex + 0] = r;
-                pixels[pixelIndex + 1] = g;
-                pixels[pixelIndex + 2] = b;
-                pixels[pixelIndex + 3] = 255;
-            
+    for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
+    {
+        for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
+        {
+            __m256 x = _mm256_set1_ps( (float)screenX - shiftX);
+            _mm256_div_ps(_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
+
+            __m256 y = _mm256_set1_ps(( (float)screenY - shiftX ) / zoom);
+
+            complexNumberAVX c = {.real = x, .imag = y};
+
+            complexNumberAVX z = c;
+
+            int iteration = 0;
+
+            for (; iteration < MAX_ITERATION_DEPTH; iteration++)
+            {
+                __m256 x2 = _mm256_mul_ps(x, x);
+                __m256 y2 = _mm256_mul_ps(y, y);
+                __m256 xy = _mm256_mul_ps(x, y);
+
+                __m256 r2 = _mm256_mul_ps(x2, y2);
+
+                __m256 cmp = _mm256_cmp_ps(r2, R2, _CMP_GE_OS);
+
+                if (_mm256_movemask_ps(cmp))
+                    break;
+
+                x = _mm256_add_ps(_mm256_sub_ps(x2, y2), c.real);
+                y = _mm256_add_ps(_mm256_add_ps(xy, xy), c.imag);
+                
+                N = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(MASK, cmp)), N);
             }
         }
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+            int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
+
+            pixels[pixelIndex + 0] = r;
+            pixels[pixelIndex + 1] = g;
+            pixels[pixelIndex + 2] = b;
+            pixels[pixelIndex + 3] = 255;
+    }
+
 }
