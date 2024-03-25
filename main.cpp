@@ -1,7 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <immintrin.h>
 
-void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
+void generateMandelbrotSet   (sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
+void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
 
 const int WINDOW_HEIGHT = 1080;
 const int WINDOW_WIDTH  = 1920;
@@ -54,8 +55,8 @@ int main(void)
             zoom *= 2;
         }
     
-        generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
-
+        // generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
+        generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
         screen.update(pixels);
 
         window.clear();
@@ -128,52 +129,62 @@ const __m256 R2    = _mm256_set1_ps(MAX_RADIUS * MAX_RADIUS);
 
 void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
-    __m256i N = _mm256_set1_epi32(0);
-
     for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
     {
-        for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
+        for (int screenX = 0; screenX < WINDOW_WIDTH; screenX += 8)
         {
             __m256 x = _mm256_set1_ps( (float)screenX - shiftX);
-            _mm256_div_ps(_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
+            x = _mm256_div_ps(_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
 
-            __m256 y = _mm256_set1_ps(( (float)screenY - shiftX ) / zoom);
+            __m256 y = _mm256_set1_ps(( (float)screenY - shiftY ) / zoom);
 
             complexNumberAVX c = {.real = x, .imag = y};
 
-            complexNumberAVX z = c;
-
-            int iteration = 0;
-
+            int      iteration  = 0;
+            __m256i _iterations = _mm256_setzero_si256();
+            
             for (; iteration < MAX_ITERATION_DEPTH; iteration++)
             {
                 __m256 x2 = _mm256_mul_ps(x, x);
                 __m256 y2 = _mm256_mul_ps(y, y);
                 __m256 xy = _mm256_mul_ps(x, y);
 
-                __m256 r2 = _mm256_mul_ps(x2, y2);
+                __m256 r2 = _mm256_add_ps(x2, y2);
 
-                __m256 cmp = _mm256_cmp_ps(r2, R2, _CMP_GE_OS);
+                __m256 cmp = _mm256_cmp_ps(r2, R2, _CMP_LT_OS);
 
-                if (_mm256_movemask_ps(cmp))
+                if (! _mm256_movemask_ps(cmp))
                     break;
 
                 x = _mm256_add_ps(_mm256_sub_ps(x2, y2), c.real);
                 y = _mm256_add_ps(_mm256_add_ps(xy, xy), c.imag);
                 
-                N = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(MASK, cmp)), N);
+                _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(cmp, MASK)), _iterations);
             }
-        }
-    }
 
-    for (int i = 0; i < 8; i++)
-    {
-            int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
+
+            int* array = (int*)&_iterations;
+
+            for (int i = 0; i < 8; i++)
+            {
+
+            sf::Uint8 r = 0, g = 0, b = 0;
+
+            if (array[i] < MAX_ITERATION_DEPTH)
+            {
+                float iterColor = array[i] * 255.0f / MAX_ITERATION_DEPTH;
+
+                r = (sf::Uint8)(255 - iterColor);
+                g = (sf::Uint8)(iterColor + 2);
+                b = (sf::Uint8)(iterColor + 3);
+            }
+            int pixelIndex = (screenY * WINDOW_WIDTH + screenX + i) * BYTES_IN_PIXEL;
 
             pixels[pixelIndex + 0] = r;
             pixels[pixelIndex + 1] = g;
             pixels[pixelIndex + 2] = b;
             pixels[pixelIndex + 3] = 255;
+            }
+        }
     }
-
 }
