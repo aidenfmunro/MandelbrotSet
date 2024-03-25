@@ -1,28 +1,35 @@
 #include <SFML/Graphics.hpp>
 
-void drawMandelbrot(sf::Uint8* pixels);
+void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
 
 const int WINDOW_HEIGHT = 1080;
 const int WINDOW_WIDTH  = 1920;
 
-const int   MAX_ITERARTION_DEPTH = 256;
-const float MAX_RADIUS           = 10;
+const int BYTES_IN_PIXEL = 4;
 
-int main()
+const int MAX_ITERATION_DEPTH = 256;
+
+struct complexNumber
 {
-    sf::Uint8* pixels = new sf::Uint8[WINDOW_WIDTH * WINDOW_HEIGHT * 4];
+    long double real;
+    long double imag;
+};
 
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT),
-                            "Mandelbrot Set", 
-                            sf::Style::Default);
+int main(void)
+{
+    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Mandelbrot Set");
 
-    sf::Texture texture;
-    texture.create(WINDOW_WIDTH, WINDOW_HEIGHT);
-    texture.update(pixels);
+    sf::Uint8* pixels = new sf::Uint8[WINDOW_WIDTH * WINDOW_HEIGHT * BYTES_IN_PIXEL];
 
-    sf::Sprite sprite(texture);
+    sf::Texture screen;
+    screen.create(WINDOW_WIDTH, WINDOW_HEIGHT);
 
+    sf::Sprite sprite(screen);
 
+    float zoom = 300.f;
+
+    int shiftX = WINDOW_WIDTH  / 2;
+    int shiftY = WINDOW_HEIGHT / 2;
 
     while (window.isOpen())
     {
@@ -34,74 +41,68 @@ int main()
             {
                 window.close();
             }
-
         }
 
-        drawMandelbrot(pixels);
-        texture.update(pixels);
+    generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
 
-        window.clear();
-        window.draw(sprite);
-        window.display();
+    screen.update(pixels);
+
+    window.clear();
+    window.draw(sprite);
+    window.display();
 
     }
-
-    delete[] pixels;
 
     return 0;
 }
 
-void drawMandelbrot(sf::Uint8* pixels)
+void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
-    const float r2 = MAX_RADIUS * MAX_RADIUS;
-
-    const float dx = 1 / WINDOW_WIDTH;
-    const float dy = 1 / WINDOW_HEIGHT;
-
-    float cx = 0.f, cy = 0.f, scale = 1.f;
-
-    for (int iy = 0; iy < WINDOW_HEIGHT; iy++, cy += dy)
-    {
-        float x0 = 
-        for (int ix = 0; ix < WINDOW_WIDTH; ix++, cx += dx)
+    for(int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
         {
-            float x = 0.f;
-            float y = 0.f;
-
-            int iter = 0;
-
-            float x2 = 0.f;
-            float y2 = 0.f;
-
-            while (x2 + y2 < r2 && iter < MAX_ITERARTION_DEPTH)
+            for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
             {
-                x = x2 - y2   + cx;
-                y = 2 * x * y + cy;
+                //scale the pixel location to the complex plane for calculations
+                float x = ( (float)screenX - shiftX ) / zoom;
+                float y = ( (float)screenY - shiftY ) / zoom;
 
-                x2 = x * x;
-                y2 = y * y;
+                complexNumber c = {.real = x, .imag = y};
 
-                iter++;
+                complexNumber z = c;
+
+                int iteration = 0; //keep track of the number of iterations
+
+                for (; iteration < MAX_ITERATION_DEPTH; iteration++)
+                {
+                    complexNumber z2 = {.real = z.real * z.real - z.imag * z.imag + c.real,
+                                        .imag = 2 * z.real * z.imag               + c.imag};
+
+                    z = z2;
+
+                    iteration++;
+
+                    if (z.real * z.real + z.imag * z.imag > 100)
+                        break;
+                }
+
+                sf::Uint8 r = 0, g = 0, b = 0;
+
+                if (iteration < MAX_ITERATION_DEPTH)
+                {
+                    float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
+
+                    r = (sf::Uint8)(255 - iterColor);
+                    g = (sf::Uint8)(iterColor + 2);
+                    b = (sf::Uint8)(iterColor + 3);
+                }
+
+                int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
+
+                pixels[pixelIndex + 0] = r;
+                pixels[pixelIndex + 1] = g;
+                pixels[pixelIndex + 2] = b;
+                pixels[pixelIndex + 3] = 255;
+            
             }
-
-            sf::Uint8 r = 0, g = 0, b = 0;
-
-            if (iter < MAX_ITERARTION_DEPTH)
-            {
-                float iterColor = iter * 255 / MAX_ITERARTION_DEPTH;
-
-                r = (sf::Uint8)(255 - iterColor);
-                g = (sf::Uint8)(iterColor + 2);
-                b = (sf::Uint8)(iterColor + 3);
-            }
-
-            int pixelIndex = (iy * WINDOW_WIDTH + ix) * 4;
-
-            pixels[pixelIndex + 0] = r;
-            pixels[pixelIndex + 1] = g;
-            pixels[pixelIndex + 2] = b;
-            pixels[pixelIndex + 3] = 255;
         }
-    }
-    
 }
