@@ -22,54 +22,55 @@ struct complexNumber
 
 int main(void)
 {
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Mandelbrot Set");
+    
+    // sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Mandelbrot Set");
 
     sf::Uint8* pixels = new sf::Uint8[WINDOW_WIDTH * WINDOW_HEIGHT * BYTES_IN_PIXEL];
 
-    sf::Texture screen;
-    screen.create(WINDOW_WIDTH, WINDOW_HEIGHT);
-
-    sf::Sprite sprite(screen);
-
+    // sf::Texture screen;
+    //screen.create(WINDOW_WIDTH, WINDOW_HEIGHT);
+//
+    //sf::Sprite sprite(screen);
+//
     float zoom = 1/300.f;
-
+//
     int shiftX = WINDOW_WIDTH  / 2;
     int shiftY = WINDOW_HEIGHT / 2;
-
-    while (window.isOpen())
-    {
-        sf::Event event;
-
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-            {
-                window.close();
-            }
-        }
-
-        if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
-        {
-            sf::Vector2i position = sf::Mouse::getPosition(window);
-            shiftX -= position.x - shiftX;
-            shiftY -= position.y - shiftY;
-
-            zoom *= 2;
-        }
-    
-        // generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
-        generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
-        screen.update(pixels);
-
-        window.clear();
-        window.draw(sprite);
-        window.display();
-
-    }
+//
+    //while (window.isOpen())
+    //{
+    //    sf::Event event;
+//
+    //    while (window.pollEvent(event))
+    //    {
+    //        if (event.type == sf::Event::Closed)
+    //        {
+    //            window.close();
+    //        }
+    //    }
+//
+    //    if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
+    //    {
+    //        sf::Vector2i position = sf::Mouse::getPosition(window);
+    //        shiftX -= position.x - shiftX;
+    //        shiftY -= position.y - shiftY;
+//
+    //        zoom /= 2;
+    //    }
+    //
+    //    // generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
+    //    generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
+    //    screen.update(pixels);
+//
+    //    window.clear();
+    //    window.draw(sprite);
+    //    window.display();
+//
+    //}
 
     unsigned long long t1 = __rdtsc();
 
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 10; i++)
     {
     generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
     }
@@ -80,7 +81,7 @@ int main(void)
 
     t1 = __rdtsc();
     
-    for (int j = 0; j < 100; j++)
+    for (int j = 0; j < 10; j++)
     {
     generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
     }
@@ -88,6 +89,8 @@ int main(void)
     t2 = __rdtsc();
 
     printf("Default time: %d", (t2 - t1) / 10000000);
+
+    delete[] pixels;
 
     return 0;
 }
@@ -130,31 +133,35 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
     }
 }
 
-struct complexNumberAVX
-{
-    __m256 real;
-    __m256 imag;  
-};
 
-const __m256 STEPS = _mm256_set_ps  (7, 6, 5, 4, 3, 2, 1, 0);
-const __m256 MASK  = _mm256_set1_ps (1);
-const __m256 R2    = _mm256_set1_ps (MAX_RADIUS * MAX_RADIUS);
+
+const __m256 _STEPS = _mm256_set_ps  (7, 6, 5, 4, 3, 2, 1, 0);
+const __m256 _MASK  = _mm256_set1_ps (1);
+const __m256 _R2    = _mm256_set1_ps (MAX_RADIUS * MAX_RADIUS);
 
 void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
+    __m256 _X0 = _mm256_mul_ps(_mm256_add_ps(_mm256_set1_ps(- shiftX), _STEPS), _mm256_set1_ps(zoom));
+
+    float dx = 8 * zoom;
+
     for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
     {
+        float   y0 = ( ( (float)screenY - shiftY ) * zoom );
+
+        __m256 _y0 = _mm256_set1_ps(y0);
+
+        __m256 _x0 = _X0;
+
         for (int screenX = 0; screenX < WINDOW_WIDTH; screenX += 8)
-        {
-            __m256 _x = _mm256_set1_ps(  (float)screenX - shiftX);
-                   _x = _mm256_mul_ps (_mm256_add_ps(_x , STEPS), _mm256_set1_ps(zoom));
-
-            __m256 _y = _mm256_set1_ps(( (float)screenY - shiftY ) * zoom);
-
-            complexNumberAVX c = {.real = _x, .imag = _y};
+        {         
+            _x0 = _mm256_add_ps(_x0, _mm256_set1_ps(dx));
 
             int      iteration  = 0;
             __m256i _iterations = _mm256_setzero_si256();
+
+            __m256 _x = _x0;
+            __m256 _y = _y0;
             
             for (; iteration < MAX_ITERATION_DEPTH; iteration++)
             {
@@ -162,24 +169,24 @@ void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float z
                 __m256 _y2 = _mm256_mul_ps(_y, _y);
                 __m256 _xy = _mm256_mul_ps(_x, _y);
 
-                __m256 r2 = _mm256_add_ps(_x2, _y2);
+                __m256 _r2 = _mm256_add_ps(_x2, _y2);
 
-                __m256 cmp = _mm256_cmp_ps(r2, R2, _CMP_LT_OS);
+                __m256 _cmp = _mm256_cmp_ps(_r2, _R2, _CMP_LT_OS);
 
-                if (! _mm256_movemask_ps(cmp))
+                if (! _mm256_movemask_ps(_cmp))
                     break;
 
-                _x = _mm256_add_ps(_mm256_sub_ps(_x2, _y2), c.real);
-                _y = _mm256_add_ps(_mm256_add_ps(_xy, _xy), c.imag);
+                _x = _mm256_add_ps(_mm256_sub_ps(_x2, _y2), _x0);
+                _y = _mm256_add_ps(_mm256_add_ps(_xy, _xy), _y0);
                 
-                _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(cmp, MASK)), _iterations);
+                _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(_cmp, _MASK)), _iterations);
             }   
 
-            int* array = (int*)&_iterations;
+            int* iterations = (int*)&_iterations;
 
             for (int i = 0; i < 8; i++)
             {
-                setPixel(pixels, screenX + i, screenY, array[i]);
+                setPixel(pixels, screenX + i, screenY, iterations[i]);
             }
         }
     }
