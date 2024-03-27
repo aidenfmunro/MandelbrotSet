@@ -122,8 +122,6 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
 
                 z = z2;
 
-                iteration++;
-
                 if (z.real * z.real + z.imag * z.imag > MAX_RADIUS * MAX_RADIUS)
                     break;
             }
