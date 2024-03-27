@@ -31,7 +31,7 @@ int main(void)
 
     sf::Sprite sprite(screen);
 
-    float zoom = 300.f;
+    float zoom = 1/300.f;
 
     int shiftX = WINDOW_WIDTH  / 2;
     int shiftY = WINDOW_HEIGHT / 2;
@@ -67,27 +67,27 @@ int main(void)
 
     }
 
-    ;unsigned long long t1 = __rdtsc();
-;
-    ;for (int i = 0; i < 100; i++)
-    ;{
-    ;generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
-    ;}
-;
-    ;unsigned long long t2 = __rdtsc();
-;
-    ;printf("AVX time: %d", (t2 - t1) / 10000000);
-;
-    ;t1 = __rdtsc();
-    ;
-    ;for (int j = 0; j < 100; j++)
-    ;{
-    ;generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
-    ;}
-;
-    ;t2 = __rdtsc();
-;
-    ;printf("Default time: %d", (t2 - t1) / 10000000);
+    unsigned long long t1 = __rdtsc();
+
+    for (int i = 0; i < 100; i++)
+    {
+    generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
+    }
+
+    unsigned long long t2 = __rdtsc();
+
+    printf("AVX time: %d", (t2 - t1) / 10000000);
+
+    t1 = __rdtsc();
+    
+    for (int j = 0; j < 100; j++)
+    {
+    generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
+    }
+
+    t2 = __rdtsc();
+
+    printf("Default time: %d", (t2 - t1) / 10000000);
 
     return 0;
 }
@@ -103,8 +103,8 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
     {
         for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
         {
-            float x = ( (float)screenX - shiftX ) / zoom;
-            float y = ( (float)screenY - shiftY ) / zoom;
+            float x = ( (float)screenX - shiftX ) * zoom;
+            float y = ( (float)screenY - shiftY ) * zoom;
 
             complexNumber c = {.real = x, .imag = y};
 
@@ -136,9 +136,9 @@ struct complexNumberAVX
     __m256 imag;  
 };
 
-const __m256 STEPS = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-const __m256 MASK  = _mm256_set1_ps(1);
-const __m256 R2    = _mm256_set1_ps(MAX_RADIUS * MAX_RADIUS);
+const __m256 STEPS = _mm256_set_ps  (7, 6, 5, 4, 3, 2, 1, 0);
+const __m256 MASK  = _mm256_set1_ps (1);
+const __m256 R2    = _mm256_set1_ps (MAX_RADIUS * MAX_RADIUS);
 
 void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
@@ -146,34 +146,34 @@ void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float z
     {
         for (int screenX = 0; screenX < WINDOW_WIDTH; screenX += 8)
         {
-            __m256 x = _mm256_set1_ps(  (float)screenX - shiftX);
-                   x = _mm256_div_ps (_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
+            __m256 _x = _mm256_set1_ps(  (float)screenX - shiftX);
+                   _x = _mm256_mul_ps (_mm256_add_ps(_x , STEPS), _mm256_set1_ps(zoom));
 
-            __m256 y = _mm256_set1_ps(( (float)screenY - shiftY ) / zoom);
+            __m256 _y = _mm256_set1_ps(( (float)screenY - shiftY ) * zoom);
 
-            complexNumberAVX c = {.real = x, .imag = y};
+            complexNumberAVX c = {.real = _x, .imag = _y};
 
             int      iteration  = 0;
             __m256i _iterations = _mm256_setzero_si256();
             
             for (; iteration < MAX_ITERATION_DEPTH; iteration++)
             {
-                __m256 x2 = _mm256_mul_ps(x, x);
-                __m256 y2 = _mm256_mul_ps(y, y);
-                __m256 xy = _mm256_mul_ps(x, y);
+                __m256 _x2 = _mm256_mul_ps(_x, _x);
+                __m256 _y2 = _mm256_mul_ps(_y, _y);
+                __m256 _xy = _mm256_mul_ps(_x, _y);
 
-                __m256 r2 = _mm256_add_ps(x2, y2);
+                __m256 r2 = _mm256_add_ps(_x2, _y2);
 
                 __m256 cmp = _mm256_cmp_ps(r2, R2, _CMP_LT_OS);
 
                 if (! _mm256_movemask_ps(cmp))
                     break;
 
-                x = _mm256_add_ps(_mm256_sub_ps(x2, y2), c.real);
-                y = _mm256_add_ps(_mm256_add_ps(xy, xy), c.imag);
+                _x = _mm256_add_ps(_mm256_sub_ps(_x2, _y2), c.real);
+                _y = _mm256_add_ps(_mm256_add_ps(_xy, _xy), c.imag);
                 
                 _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(cmp, MASK)), _iterations);
-            }
+            }   
 
             int* array = (int*)&_iterations;
 
