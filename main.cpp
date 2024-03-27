@@ -4,6 +4,8 @@
 void generateMandelbrotSet   (sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
 void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
 
+void setPixel(sf::Uint8* pixels, int screenX, int screenY, int iteration);
+
 const int WINDOW_HEIGHT = 1080;
 const int WINDOW_WIDTH  = 1920;
 
@@ -65,7 +67,34 @@ int main(void)
 
     }
 
+    ;unsigned long long t1 = __rdtsc();
+;
+    ;for (int i = 0; i < 100; i++)
+    ;{
+    ;generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
+    ;}
+;
+    ;unsigned long long t2 = __rdtsc();
+;
+    ;printf("AVX time: %d", (t2 - t1) / 10000000);
+;
+    ;t1 = __rdtsc();
+    ;
+    ;for (int j = 0; j < 100; j++)
+    ;{
+    ;generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
+    ;}
+;
+    ;t2 = __rdtsc();
+;
+    ;printf("Default time: %d", (t2 - t1) / 10000000);
+
     return 0;
+}
+
+void perfFuncMandelbrot(sf::Uint8* pixels, void (*function)(sf::Uint8*, int, int, float), int sampleSize)
+{
+
 }
 
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
@@ -96,23 +125,7 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
                     break;
             }
 
-            sf::Uint8 r = 0, g = 0, b = 0;
-
-            if (iteration < MAX_ITERATION_DEPTH)
-            {
-                float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
-
-                r = (sf::Uint8)(255 - iterColor);
-                g = (sf::Uint8)(iterColor + 2);
-                b = (sf::Uint8)(iterColor + 3);
-            }
-
-            int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
-
-            pixels[pixelIndex + 0] = r;
-            pixels[pixelIndex + 1] = g;
-            pixels[pixelIndex + 2] = b;
-            pixels[pixelIndex + 3] = 255;
+            setPixel(pixels, screenX, screenY, iteration);
         }
     }
 }
@@ -133,8 +146,8 @@ void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float z
     {
         for (int screenX = 0; screenX < WINDOW_WIDTH; screenX += 8)
         {
-            __m256 x = _mm256_set1_ps( (float)screenX - shiftX);
-            x = _mm256_div_ps(_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
+            __m256 x = _mm256_set1_ps(  (float)screenX - shiftX);
+                   x = _mm256_div_ps (_mm256_add_ps(x , STEPS), _mm256_set1_ps(zoom));
 
             __m256 y = _mm256_set1_ps(( (float)screenY - shiftY ) / zoom);
 
@@ -162,29 +175,34 @@ void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float z
                 _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(cmp, MASK)), _iterations);
             }
 
-
             int* array = (int*)&_iterations;
 
             for (int i = 0; i < 8; i++)
             {
-
-            sf::Uint8 r = 0, g = 0, b = 0;
-
-            if (array[i] < MAX_ITERATION_DEPTH)
-            {
-                float iterColor = array[i] * 255.0f / MAX_ITERATION_DEPTH;
-
-                r = (sf::Uint8)(255 - iterColor);
-                g = (sf::Uint8)(iterColor + 2);
-                b = (sf::Uint8)(iterColor + 3);
-            }
-            int pixelIndex = (screenY * WINDOW_WIDTH + screenX + i) * BYTES_IN_PIXEL;
-
-            pixels[pixelIndex + 0] = r;
-            pixels[pixelIndex + 1] = g;
-            pixels[pixelIndex + 2] = b;
-            pixels[pixelIndex + 3] = 255;
+                setPixel(pixels, screenX + i, screenY, array[i]);
             }
         }
     }
+}
+
+void setPixel(sf::Uint8* pixels, int screenX, int screenY, int iteration)
+{
+    sf::Uint8 r = 0, g = 0, b = 0;
+
+    if (iteration < MAX_ITERATION_DEPTH)
+    {
+        float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
+
+        r = (sf::Uint8)(255 - iterColor);
+        g = (sf::Uint8)(iterColor + 2);
+        b = (sf::Uint8)(iterColor + 3);
+    }
+
+    int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
+
+    pixels[pixelIndex + 0] = r;
+    pixels[pixelIndex + 1] = g;
+    pixels[pixelIndex + 2] = b;
+    pixels[pixelIndex + 3] = 255;
+
 }
