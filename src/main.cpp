@@ -44,7 +44,7 @@ int main(void)
             zoom /= 2;
         }
     
-        generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
+        generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
         screen.update(pixels);
 
         window.clear();
@@ -55,8 +55,8 @@ int main(void)
 
     // )
 
-    uint64_t dtavx = perfMandelbrotTest (generateMandelbrotSetAVX, pixels, 10) / 100000000;
-    uint64_t dtnop = perfMandelbrotTest (generateMandelbrotSet,    pixels, 10) / 100000000;
+    uint64_t dtavx = perfMandelbrotTest (generateMandelbrotSetAVX, pixels, 100) / 100000000;
+    uint64_t dtnop = perfMandelbrotTest (generateMandelbrotSet,    pixels, 100) / 100000000;
  
     printf("AVX time: %ld\n",     dtavx);
 

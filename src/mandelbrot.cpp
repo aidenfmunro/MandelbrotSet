@@ -1,5 +1,6 @@
 #include <immintrin.h>
 #include <SFML/Graphics.hpp>
+#include <math.h>
 
 #include "mandelbrot.hpp"
 #include "constants.hpp"
@@ -14,25 +15,30 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
 {
     for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
     {
+        float y0 = ( (float)screenY - shiftY ) * zoom;
+        float x0 = (                - shiftX ) * zoom;
+
         for (int screenX = 0; screenX < WINDOW_WIDTH; screenX++)
         {
-            float x = ( (float)screenX - shiftX ) * zoom;
-            float y = ( (float)screenY - shiftY ) * zoom;
+            x0 += zoom;
 
-            complexNumber c = {.real = x, .imag = y};
-
-            complexNumber z = c;
+            float x = x0;
+            float y = y0;
 
             int iteration = 0; 
 
             for (; iteration < MAX_ITERATION_DEPTH; iteration++)
             {
-                complexNumber z2 = {.real = z.real * z.real - z.imag * z.imag + c.real,
-                                    .imag = 2 * z.real * z.imag               + c.imag};
 
-                z = z2;
+                float x2 = x * x;
+                float y2 = y * y;
+                float xy = x * y;
 
-                if (z.real * z.real + z.imag * z.imag > MAX_RADIUS * MAX_RADIUS)
+                x = x2 - y2 + x0;
+                y = xy + xy + y0;
+
+
+                if (x2 + y2 > MAX_RADIUS * MAX_RADIUS)
                     break;
             }
 
@@ -108,9 +114,9 @@ void setPixel(sf::Uint8* pixels, int screenX, int screenY, int iteration)
     {
         float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
 
-        r = (sf::Uint8)(255 - iterColor);
-        g = (sf::Uint8)(iterColor + 2);
-        b = (sf::Uint8)(iterColor + 3);
+        r = (sf::Uint8)(iterColor / 2);
+        g = (sf::Uint8)(iterColor * 2);
+        b = (sf::Uint8)(iterColor * 2 + 4);
     }
 
     int pixelIndex = (screenY * WINDOW_WIDTH + screenX) * BYTES_IN_PIXEL;
