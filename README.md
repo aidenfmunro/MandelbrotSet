@@ -43,7 +43,7 @@ The pseudcode above was rewritten in C.
  
 Some simple optimization were applied related to loops and variables.
 
-**Result:** ~ 825 * 10^9 ticks per 100 cycles.
+**Result:** ~ (825 +- 2) * 10^9 ticks per 100 cycles.
 
 ## Vectorized implementation
 
@@ -51,7 +51,7 @@ SIMD (Single Instruction Multiple Data) instructions enable parallel processing 
 
 My processor supports AVX2 insuction set.
 
-**Result:** ~ 125 * 10^9 ticks per 100 cycles.
+**Result:** ~ (125 +- 1) * 10^9 ticks per 100 cycles.
 
 ## Overall results
 
@@ -64,5 +64,17 @@ My processor supports AVX2 insuction set.
 
 **6.6x** boost compared to the basic implementation was achieved. That's imperssive!
 
+## Dependencies
+```
+sudo apt install libsmfl-dev
+```
+For more information go to: [SFML official site](https://www.sfml-dev.org/learn.php)
 
+## Build
+```
+make
+```
+```
+./main
+```
 
