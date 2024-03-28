@@ -1,104 +1,14 @@
-#include <SFML/Graphics.hpp>
 #include <immintrin.h>
+#include <SFML/Graphics.hpp>
 
-void generateMandelbrotSet   (sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
-void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom);
-
-void setPixel(sf::Uint8* pixels, int screenX, int screenY, int iteration);
-
-const int WINDOW_HEIGHT = 1080;
-const int WINDOW_WIDTH  = 1920;
-
-const int BYTES_IN_PIXEL = 4;
-
-const int MAX_ITERATION_DEPTH = 256;
-const int MAX_RADIUS = 10;
+#include "mandelbrot.hpp"
+#include "constants.hpp"
 
 struct complexNumber
 {
     float real;
     float imag;
 };
-
-int main(void)
-{
-    
-    // sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Mandelbrot Set");
-
-    sf::Uint8* pixels = new sf::Uint8[WINDOW_WIDTH * WINDOW_HEIGHT * BYTES_IN_PIXEL];
-
-    // sf::Texture screen;
-    //screen.create(WINDOW_WIDTH, WINDOW_HEIGHT);
-//
-    //sf::Sprite sprite(screen);
-//
-    float zoom = 1/300.f;
-//
-    int shiftX = WINDOW_WIDTH  / 2;
-    int shiftY = WINDOW_HEIGHT / 2;
-//
-    //while (window.isOpen())
-    //{
-    //    sf::Event event;
-//
-    //    while (window.pollEvent(event))
-    //    {
-    //        if (event.type == sf::Event::Closed)
-    //        {
-    //            window.close();
-    //        }
-    //    }
-//
-    //    if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
-    //    {
-    //        sf::Vector2i position = sf::Mouse::getPosition(window);
-    //        shiftX -= position.x - shiftX;
-    //        shiftY -= position.y - shiftY;
-//
-    //        zoom /= 2;
-    //    }
-    //
-    //    // generateMandelbrotSet(pixels, shiftX, shiftY, zoom);
-    //    generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
-    //    screen.update(pixels);
-//
-    //    window.clear();
-    //    window.draw(sprite);
-    //    window.display();
-//
-    //}
-
-    unsigned long long t1 = __rdtsc();
-
-    for (int i = 0; i < 10; i++)
-    {
-    generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
-    }
-
-    unsigned long long t2 = __rdtsc();
-
-    printf("AVX time: %d", (t2 - t1) / 10000000);
-
-    t1 = __rdtsc();
-    
-    for (int j = 0; j < 10; j++)
-    {
-    generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
-    }
-
-    t2 = __rdtsc();
-
-    printf("Default time: %d", (t2 - t1) / 10000000);
-
-    delete[] pixels;
-
-    return 0;
-}
-
-void perfFuncMandelbrot(sf::Uint8* pixels, void (*function)(sf::Uint8*, int, int, float), int sampleSize)
-{
-
-}
 
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
