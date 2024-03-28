@@ -1,7 +1,8 @@
-#include <SFML/Graphics.hpp>
+
 #include <immintrin.h>
 
 #include "mandelbrot.hpp"
+#include "perftest.hpp"
 #include "constants.hpp"
 #include "settings.hpp"
 
@@ -13,7 +14,7 @@ int main(void)
     int shiftY = WINDOW_HEIGHT / 2;
     float zoom = 1/300.f;
 
-    GRAPHICS_ON(
+    // GRAPHICS_ON(
 
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Mandelbrot Set");
 
@@ -52,32 +53,18 @@ int main(void)
 
     }
 
-    )
-    unsigned long long t1 = __rdtsc();
+    // )
 
-    for (int i = 0; i < 10; i++)
-    {
-    generateMandelbrotSetAVX(pixels, shiftX, shiftY, zoom);
-    }
+    uint64_t dtavx = perfMandelbrotTest (generateMandelbrotSetAVX, pixels, 10) / 100000000;
+    uint64_t dtnop = perfMandelbrotTest (generateMandelbrotSet,    pixels, 10) / 100000000;
+ 
+    printf("AVX time: %ld\n",     dtavx);
 
-    unsigned long long t2 = __rdtsc();
+    printf("Default time: %ld\n", dtnop);
 
-    double avx = t2 - t1;
+    double compare = (double) dtnop / (double) dtavx;
 
-    printf("AVX time: %d", (t2 - t1) / 10000000);
-
-    t1 = __rdtsc();
-    
-    for (int j = 0; j < 10; j++)
-    {
-    generateMandelbrotSet   (pixels, shiftX, shiftY, zoom);
-    }
-
-    t2 = __rdtsc();
-
-    double noop = t2 - t1;
-
-    printf("Default time: %d %lg", (t2 - t1) / 10000000, noop / avx);
+    printf("Boost: %lg\n", compare);
 
     delete[] pixels;
 
