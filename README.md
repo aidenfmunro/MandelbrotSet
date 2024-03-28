@@ -58,11 +58,11 @@ My processor supports AVX2 insuction set.
 | Implemenation         | Basic  | Vectorized | Optimisation level      |  
 |-----------------------|:------:|:----------:|:-----:|
 | Ticks * 10^9          | 825    | 125        | *O3*  |
-| Boost                 | 1x     | 6.5x       | *O3*  |
+| Boost                 | 1x     | 6.6x       | *O3*  |
 
 # Conclusion
 
-**6.5x** boost compared to the basic implementation was achieved. That's imperssive!
+**6.6x** boost compared to the basic implementation was achieved. That's imperssive!
 
 
 
