@@ -60,9 +60,9 @@ My processor supports AVX2 insuction set.
 | Ticks * 10^9          | 825    | 125        | *O3*  |
 | Boost                 | 1x     | 6.5x       | *O3*  |
 
-## Conclusion
+# Conclusion
 
-6.5x boost compared to the naive implementation was achieved. That's imperssive!
+**6.5x** boost compared to the basic implementation was achieved. That's imperssive!
 
 
 
