@@ -43,7 +43,7 @@ The pseudcode above was rewritten in C.
  
 Some simple optimization were applied related to loops and variables.
 
-**Result:** ~ (825 +- 2) * 10^9 ticks per 100 cycles.
+**Result:** $\approx$ $(825 \pm 2)$ $\cdot$ $10^9$ ticks per $100$ cycles.
 
 ## Vectorized implementation
 
@@ -51,14 +51,14 @@ SIMD (Single Instruction Multiple Data) instructions enable parallel processing 
 
 My processor supports AVX2 insuction set.
 
-**Result:** ~ (125 +- 1) * 10^9 ticks per 100 cycles.
+**Result:** $\approx$ $(125 \pm 1)$ $\cdot$ $10^9$ ticks per $100$ cycles.
 
 ## Overall results
 
 | Implemenation         | Basic  | Vectorized | Optimisation level      |  
 |-----------------------|:------:|:----------:|:-----:|
-| Ticks * 10^9          | 825    | 125        | *O3*  |
-| Boost                 | 1x     | 6.6x       | *O3*  |
+| Ticks $\cdot$ $10^9$          | $825$    | $125$        | *O3*  |
+| Boost                 | $1x$     | $6.6x$       | *O3*  |
 
 # Conclusion
 

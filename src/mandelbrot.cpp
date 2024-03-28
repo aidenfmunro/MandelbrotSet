@@ -10,7 +10,7 @@ struct complexNumber
     float real;
     float imag;
 };
-
+[[deprecated]]
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
     for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
@@ -49,13 +49,14 @@ void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom
 
 
 
-const __m256 _STEPS = _mm256_set_ps  (7, 6, 5, 4, 3, 2, 1, 0);
-const __m256 _MASK  = _mm256_set1_ps (1);
-const __m256 _R2    = _mm256_set1_ps (MAX_RADIUS * MAX_RADIUS);
 
 void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
-    __m256 _X0 = _mm256_mul_ps(_mm256_add_ps(_mm256_set1_ps(- shiftX), _STEPS), _mm256_set1_ps(zoom));
+
+    __m256 _STEPS = _mm256_set_ps  (7, 6, 5, 4, 3, 2, 1, 0);
+    __m256 _MASK  = _mm256_set1_ps (1);
+    __m256 _R2    = _mm256_set1_ps (MAX_RADIUS * MAX_RADIUS);
+    __m256 _X0    = _mm256_mul_ps(_mm256_add_ps(_mm256_set1_ps(- shiftX), _STEPS), _mm256_set1_ps(zoom));
 
     float dx = 8 * zoom;
 
@@ -112,7 +113,7 @@ void setPixel(sf::Uint8* pixels, int screenX, int screenY, int iteration)
 
     if (iteration < MAX_ITERATION_DEPTH)
     {
-        float iterColor = iteration * 255.0f / MAX_ITERATION_DEPTH;
+        float iterColor = iteration;
 
         r = (sf::Uint8)(iterColor / 2);
         g = (sf::Uint8)(iterColor * 2);
