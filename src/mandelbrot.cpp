@@ -10,7 +10,9 @@ struct complexNumber
     float real;
     float imag;
 };
+
 [[deprecated]]
+
 void generateMandelbrotSet(sf::Uint8* pixels, int shiftX, int shiftY, float zoom)
 {
     for (int screenY = 0; screenY < WINDOW_HEIGHT; screenY++)
@@ -97,7 +99,7 @@ void generateMandelbrotSetAVX(sf::Uint8* pixels, int shiftX, int shiftY, float z
                 _iterations = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(_cmp, _MASK)), _iterations);
             }   
 
-            int* iterations = (int*)&_iterations;
+            int* iterations = (int*)&_iterations; // TODO: use author convertation to int *
 
             for (int i = 0; i < 8; i++)
             {

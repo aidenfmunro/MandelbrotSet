@@ -33,6 +33,17 @@ int main(void)
             {
                 window.close();
             }
+            else if (event.type == sf::Event::KeyPressed)
+            {
+                if (event.key.code == sf::Keyboard::Z)
+                {
+                    zoom /= 2;
+                }
+                else if (event.key.code == sf::Keyboard::D)
+                {
+                    shiftX += 10;
+                }
+            }
         }
 
         if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
@@ -54,19 +65,21 @@ int main(void)
     }
 
     // )
+
     for (int i = 0; i < 10; i++)
     {
-    uint64_t dtavx = perfMandelbrotTest (generateMandelbrotSetAVX, pixels, 10) / 100000000;
-    uint64_t dtnop = perfMandelbrotTest (generateMandelbrotSet,    pixels, 10) / 100000000;
- 
-    printf("AVX time: %ld\n",     dtavx);
+        uint64_t dtavx = perfMandelbrotTest (generateMandelbrotSetAVX, pixels, 10) / 100000000;
+        uint64_t dtnop = perfMandelbrotTest (generateMandelbrotSet,    pixels, 10) / 100000000;
+    
+        printf("AVX time: %ld\n",     dtavx);
 
-    printf("Default time: %ld\n", dtnop);
+        printf("Default time: %ld\n", dtnop);
 
-    double compare = (double) dtnop / (double) dtavx;
+        double compare = (double) dtnop / (double) dtavx;
 
-    printf("Boost: %lg\n", compare);
+        printf("Boost: %lg\n", compare);
     }
+
     delete[] pixels;
 
     return 0;

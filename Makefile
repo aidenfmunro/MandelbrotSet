@@ -14,6 +14,9 @@ all:
 run: all
 		./$(TARGET)
 
+dirs:
+	mkdir obj
+
 clean:
 	rm *.o main
 

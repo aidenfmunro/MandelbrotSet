@@ -55,10 +55,10 @@ My processor supports AVX2 insuction set.
 
 ## Overall results
 
-| Implemenation         | Basic  | Vectorized | Optimisation level      |  
+|                       | Ticks $\cdot$ $10^9$ | Relative Boost | Optimisation level      |  
 |-----------------------|:------:|:----------:|:-----:|
-| Ticks $\cdot$ $10^9$          | $825$    | $125$        | *O3*  |
-| Boost                 | $1x$     | $6.6x$       | *O3*  |
+| Basic                 | $825$    | $1.0x$        | *O3*  |
+| Vectorized            | $125$     | $6.6x$       | *O3*  |
 
 # Conclusion
 
